@@ -1,0 +1,13 @@
+{
+  "source": "https://youmind.com/ko-KR/gpt-image-2-prompts",
+  "model": "gpt-image-2",
+  "locale": "ko-KR",
+  "reported_total": 4430,
+  "fetched_count": 4430,
+  "files": [
+    "prompts-ko.json",
+    "prompts-ko.jsonl",
+    "prompts-ko.csv",
+    "prompts-ko.md"
+  ]
+}

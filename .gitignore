@@ -1,0 +1,36 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# raw data directory (원본, public에 복사됨)
+/youmind-gpt-image-2-ko/
+
+# public 데이터 중 대용량 중복 파일 제외 (prompts-ko.json만 유지)
+/public/youmind-gpt-image-2-ko/*.jsonl
+/public/youmind-gpt-image-2-ko/*.csv
+/public/youmind-gpt-image-2-ko/*.md
+/public/youmind-gpt-image-2-ko/prompts-korean-output.json
