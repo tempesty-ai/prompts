@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef } from "react";
 
@@ -13,7 +13,7 @@ export function AnimatedWave() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const chars = "·∘○◯◌●◉";
+    const chars = ".oO@";
     let time = 0;
 
     const resize = () => {
@@ -79,3 +79,4 @@ export function AnimatedWave() {
     />
   );
 }
+

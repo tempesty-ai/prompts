@@ -18,6 +18,7 @@ yarn-error.log*
 
 # env files
 .env*
+.env*.local
 
 # vercel
 .vercel
@@ -26,11 +27,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# raw data directory (원본, public에 복사됨)
-/youmind-gpt-image-2-ko/
-
-# public 데이터 중 대용량 중복 파일 제외 (prompts-ko.json만 유지)
-/public/youmind-gpt-image-2-ko/*.jsonl
-/public/youmind-gpt-image-2-ko/*.csv
-/public/youmind-gpt-image-2-ko/*.md
-/public/youmind-gpt-image-2-ko/prompts-korean-output.json
+# generated catalog images
+/generated-r2-queue/*.png
+/generated-r2-queue/*.jpg
+/generated-r2-queue/*.jpeg
+/generated-r2-queue/*.webp
+/generated-r2-queue/generation-log.jsonl

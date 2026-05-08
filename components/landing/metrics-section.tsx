@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function AnimatedCounter({ end, suffix = "", prefix = "" }: { end: number; suffix?: string; prefix?: string }) {
   const [count, setCount] = useState(0);
@@ -8,26 +8,21 @@ function AnimatedCounter({ end, suffix = "", prefix = "" }: { end: number; suffi
   const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
-          const duration = 2000;
-          const startTime = performance.now();
-
-          const animate = (currentTime: number) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setCount(Math.floor(eased * end));
-            if (progress < 1) requestAnimationFrame(animate);
-          };
-
-          requestAnimationFrame(animate);
-        }
-      },
-      { threshold: 0.5 }
-    );
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !hasAnimated) {
+        setHasAnimated(true);
+        const duration = 2000;
+        const startTime = performance.now();
+        const animate = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setCount(Math.floor(eased * end));
+          if (progress < 1) requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+      }
+    }, { threshold: 0.5 });
 
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
@@ -35,36 +30,16 @@ function AnimatedCounter({ end, suffix = "", prefix = "" }: { end: number; suffi
 
   return (
     <div ref={ref} className="text-6xl lg:text-8xl font-display tracking-tight">
-      {prefix}{count.toLocaleString()}{suffix}
+      {prefix}{count.toLocaleString("en-US")}{suffix}
     </div>
   );
 }
 
 const metrics = [
-  {
-    value: 4430,
-    suffix: "",
-    prefix: "",
-    label: "한국어 프롬프트",
-  },
-  {
-    value: 8,
-    suffix: "개",
-    prefix: "",
-    label: "카테고리",
-  },
-  {
-    value: 100,
-    suffix: "%",
-    prefix: "",
-    label: "무료 · 가입 불필요",
-  },
-  {
-    value: 0,
-    suffix: "초",
-    prefix: "",
-    label: "복사에 걸리는 시간",
-  },
+  { value: 1446, suffix: "", prefix: "", label: "normalized prompts" },
+  { value: 8, suffix: "", prefix: "", label: "creative categories" },
+  { value: 100, suffix: "%", prefix: "", label: "clean visible metadata" },
+  { value: 0, suffix: "", prefix: "", label: "manual copy-paste in batch mode" },
 ];
 
 export function MetricsSection() {
@@ -72,12 +47,9 @@ export function MetricsSection() {
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { threshold: 0.1 }
-    );
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setIsVisible(true);
+    }, { threshold: 0.1 });
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
@@ -89,22 +61,18 @@ export function MetricsSection() {
           <div>
             <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
               <span className="w-8 h-px bg-foreground/30" />
-              숫자로 보는 Prompts K
+              CATALOG HEALTH
             </span>
-            <h2
-              className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
-            >
-              한 번 열면
+            <h2 className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+              Smaller dataset,
               <br />
-              바로 쓸 수 있습니다.
+              better signal.
             </h2>
           </div>
           <div className="flex items-center gap-4 font-mono text-sm text-muted-foreground">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              로컬 전용 · 무료
+              live local catalog
             </span>
           </div>
         </div>
@@ -113,9 +81,7 @@ export function MetricsSection() {
           {metrics.map((metric, index) => (
             <div
               key={metric.label}
-              className={`bg-background p-8 lg:p-12 transition-all duration-700 ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-              }`}
+              className={`bg-background p-8 lg:p-12 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
               style={{ transitionDelay: `${index * 100}ms` }}
             >
               <AnimatedCounter end={metric.value} suffix={metric.suffix} prefix={metric.prefix} />

@@ -5,40 +5,27 @@ import { useEffect, useRef, useState } from "react";
 const steps = [
   {
     number: "I",
-    title: "카탈로그에서 골라요",
-    description: "검색과 태그로 원하는 프롬프트를 빠르게 찾습니다. 카테고리별 필터로 원하는 스타일만 추려볼 수 있습니다.",
-    code: `// 검색 예시
-검색어: "라이브커머스"
-
-카테고리: [포스터] [제품] [UI]
-           [캐릭터] [음식] [썸네일]
-
-필터: 전체 · 추천 · 레퍼런스 필요`,
+    title: "Import the source catalog",
+    description: "Pull the NanoBanana trending prompt data, normalize it, and remove broken text from visible fields.",
+    code: `npm run import:nanobanana
+source: jau123/nanobanana-trending-prompts
+output: public/nanobanana-trending-prompts/prompts-ko.json`,
   },
   {
     number: "II",
-    title: "상세를 확인해요",
-    description: "예시 이미지, 출처, 레퍼런스 필요 여부를 함께 봅니다. 원본 프롬프트와 한글화 지시문을 모두 확인할 수 있습니다.",
-    code: `제목: 라이브커머스 화면 목업
-언어: zh (원본)
-추천: ✓  레퍼런스: ✗
-
-설명:
-실시간 판매 화면 스타일의
-가상 제품 쇼핑 UI 이미지
-
-원본 예시: 3장`,
+    title: "Browse and shortlist",
+    description: "Filter by prompt type, metrics, source image availability, or rank to find ideas worth testing.",
+    code: `filters: poster, product, UI, photo
+sort: featured, newest, oldest, title
+queue: incomplete items first`,
   },
   {
     number: "III",
-    title: "복사해서 사용해요",
-    description: "원문 또는 결과물 한글화 지시문을 복사해 ChatGPT에 붙여넣습니다. 별도 가입이나 설치가 필요 없습니다.",
-    code: `아래 원본 프롬프트로 이미지를
-생성하되, 최종 이미지 안에 보이는
-모든 외국어 텍스트를 자연스러운
-한국어로 바꿔서 생성하세요.
-
-✓ 복사 완료 → ChatGPT에 붙여넣기`,
+    title: "Generate final thumbnails",
+    description: "Use the batch script or admin uploader to replace source thumbnails with clean generated R2 images.",
+    code: `npm run generate:images -- --limit 20
+output: generated-r2-queue/{id}.png
+priority: R2 image > source image > placeholder`,
   },
 ];
 
@@ -48,58 +35,30 @@ export function HowItWorksSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { threshold: 0.1 }
-    );
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setIsVisible(true);
+    }, { threshold: 0.1 });
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev + 1) % steps.length);
-    }, 5000);
+    const interval = setInterval(() => setActiveStep((prev) => (prev + 1) % steps.length), 5000);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <section
-      id="how-it-works"
-      ref={sectionRef}
-      className="relative py-24 lg:py-32 bg-foreground text-background overflow-hidden"
-    >
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-              -45deg,
-              transparent,
-              transparent 40px,
-              currentColor 40px,
-              currentColor 41px
-            )`,
-          }}
-        />
-      </div>
-
+    <section id="how-it-works" ref={sectionRef} className="relative py-24 lg:py-32 bg-foreground text-background overflow-hidden">
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="mb-16 lg:mb-24">
           <span className="inline-flex items-center gap-3 text-sm font-mono text-background/50 mb-6">
             <span className="w-8 h-px bg-background/30" />
-            HOW IT WORKS
+            WORKFLOW
           </span>
-          <h2
-            className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-          >
-            3단계로 끝.
+          <h2 className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+            From source prompt
             <br />
-            <span className="text-background/50">검색 → 확인 → 복사.</span>
+            <span className="text-background/50">to finished thumbnail.</span>
           </h2>
         </div>
 
@@ -110,9 +69,7 @@ export function HowItWorksSection() {
                 key={step.number}
                 type="button"
                 onClick={() => setActiveStep(index)}
-                className={`w-full text-left py-8 border-b border-background/10 transition-all duration-500 group ${
-                  activeStep === index ? "opacity-100" : "opacity-40 hover:opacity-70"
-                }`}
+                className={`w-full text-left py-8 border-b border-background/10 transition-all duration-500 group ${activeStep === index ? "opacity-100" : "opacity-40 hover:opacity-70"}`}
               >
                 <div className="flex items-start gap-6">
                   <span className="font-display text-3xl text-background/30">{step.number}</span>
@@ -121,15 +78,6 @@ export function HowItWorksSection() {
                       {step.title}
                     </h3>
                     <p className="text-background/60 leading-relaxed">{step.description}</p>
-
-                    {activeStep === index && (
-                      <div className="mt-4 h-px bg-background/20 overflow-hidden">
-                        <div
-                          className="h-full bg-background w-0"
-                          style={{ animation: "progress 5s linear forwards" }}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </button>
@@ -146,45 +94,17 @@ export function HowItWorksSection() {
                 </div>
                 <span className="text-xs font-mono text-background/40">prompts-k</span>
               </div>
-
-              <div className="p-8 font-mono text-sm min-h-[280px]">
-                <pre className="text-background/70 whitespace-pre-wrap">
-                  {steps[activeStep].code.split("\n").map((line, lineIndex) => (
-                    <div
-                      key={`${activeStep}-${lineIndex}`}
-                      className="leading-loose code-line-reveal"
-                      style={{ animationDelay: `${lineIndex * 80}ms` }}
-                    >
-                      <span className="text-background/20 select-none w-8 inline-block">{lineIndex + 1}</span>
-                      <span>{line || " "}</span>
-                    </div>
-                  ))}
-                </pre>
-              </div>
-
+              <pre className="p-8 font-mono text-sm min-h-[220px] text-background/70 whitespace-pre-wrap">
+                {steps[activeStep].code}
+              </pre>
               <div className="px-6 py-4 border-t border-background/10 flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs font-mono text-background/40">준비 완료</span>
+                <span className="text-xs font-mono text-background/40">ready</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes progress {
-          from { width: 0%; }
-          to { width: 100%; }
-        }
-        .code-line-reveal {
-          opacity: 0;
-          transform: translateX(-8px);
-          animation: lineReveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-        @keyframes lineReveal {
-          to { opacity: 1; transform: translateX(0); }
-        }
-      `}</style>
     </section>
   );
 }

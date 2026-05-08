@@ -3,20 +3,20 @@
 import { AnimatedWave } from "./animated-wave";
 
 const footerLinks = {
-  카탈로그: [
-    { name: "전체 프롬프트", href: "#catalog" },
-    { name: "추천 프롬프트", href: "#catalog" },
-    { name: "카테고리별 보기", href: "#catalog" },
-    { name: "인기 프롬프트", href: "#catalog" },
+  Catalog: [
+    { name: "All prompts", href: "#catalog" },
+    { name: "Featured", href: "#catalog" },
+    { name: "Source images", href: "#catalog" },
+    { name: "Reference prompts", href: "#catalog" },
   ],
-  사용법: [
-    { name: "3단계 가이드", href: "#how-it-works" },
-    { name: "결과 한글화란?", href: "#how-it-works" },
-    { name: "레퍼런스 이미지", href: "#how-it-works" },
+  Workflow: [
+    { name: "Import data", href: "#how-it-works" },
+    { name: "Browse ideas", href: "#how-it-works" },
+    { name: "Generate images", href: "#how-it-works" },
   ],
-  정보: [
-    { name: "데이터 출처", href: "#" },
-    { name: "GPT Image 2", href: "#" },
+  Source: [
+    { name: "NanoBanana prompts", href: "https://github.com/jau123/nanobanana-trending-prompts" },
+    { name: "OpenAI images", href: "https://platform.openai.com/docs/guides/images" },
   ],
 };
 
@@ -33,17 +33,14 @@ export function FooterSection() {
             <div className="col-span-2">
               <a href="#" className="inline-flex items-center gap-2 mb-6">
                 <span className="text-2xl font-display">Prompts K</span>
-                <span className="text-xs text-muted-foreground font-mono">한국어</span>
+                <span className="text-xs text-muted-foreground font-mono">catalog</span>
               </a>
-
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">
-                GPT Image 2용 한국어 프롬프트 카탈로그.
-                무료로 사용하는 로컬 전용 도구입니다.
+                A compact catalog for browsing trending image-generation prompts and preparing cleaner generated thumbnails.
               </p>
-
               <div className="inline-flex items-center gap-2 text-sm text-muted-foreground font-mono">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                로컬 실행 중
+                local catalog running
               </div>
             </div>
 
@@ -53,10 +50,7 @@ export function FooterSection() {
                 <ul className="space-y-4">
                   {links.map((link) => (
                     <li key={link.name}>
-                      <a
-                        href={link.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      >
+                      <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                         {link.name}
                       </a>
                     </li>
@@ -68,12 +62,8 @@ export function FooterSection() {
         </div>
 
         <div className="py-8 border-t border-foreground/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            2025 Prompts K · 로컬 전용 · 무료
-          </p>
-          <p className="text-sm text-muted-foreground font-mono">
-            GPT Image 2 데이터 기반
-          </p>
+          <p className="text-sm text-muted-foreground">2026 Prompts K</p>
+          <p className="text-sm text-muted-foreground font-mono">NanoBanana prompt catalog</p>
         </div>
       </div>
     </footer>
