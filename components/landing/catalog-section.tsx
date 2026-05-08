@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Copy, ExternalLink, ChevronDown, Search, ImageOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const DATA_URL = "/youmind-gpt-image-2-ko/prompts-ko.json";
 const PAGE_SIZE = 40;
@@ -165,7 +166,8 @@ function DetailView({ prompt, onClose }: { prompt: Prompt; onClose: () => void }
 
   const copyKoreanized = async () => {
     await navigator.clipboard.writeText(koreanizedWrapper(prompt));
-    toast.success("결과 한글화 프롬프트를 복사했습니다");
+    window.open("https://chatgpt.com", "_blank");
+    toast.success("복사 완료 — ChatGPT가 열렸습니다. 붙여넣기(Ctrl+V) 하세요", { duration: 5000 });
   };
 
   return (
@@ -283,6 +285,7 @@ export function CatalogSection() {
   const [sort, setSort] = useState("featured");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const applyFilter = useCallback(
@@ -516,7 +519,10 @@ export function CatalogSection() {
                       key={p.id}
                       prompt={p}
                       isSelected={selected?.id === p.id}
-                      onClick={() => setSelected(p)}
+                      onClick={() => {
+                        setSelected(p);
+                        setMobileSheetOpen(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -537,8 +543,8 @@ export function CatalogSection() {
             )}
           </div>
 
-          {/* Detail panel */}
-          <div className="lg:sticky lg:top-24">
+          {/* Detail panel — 데스크탑 */}
+          <div className="hidden lg:block lg:sticky lg:top-24">
             {selected ? (
               <DetailView prompt={selected} onClose={() => setSelected(null)} />
             ) : (
@@ -551,6 +557,18 @@ export function CatalogSection() {
               </div>
             )}
           </div>
+
+          {/* Detail panel — 모바일 바텀시트 */}
+          <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+            <SheetContent side="bottom" className="lg:hidden h-[85vh] overflow-y-auto p-0">
+              <SheetHeader className="sr-only">
+                <SheetTitle>{selected?.title ?? "프롬프트 상세"}</SheetTitle>
+              </SheetHeader>
+              {selected && (
+                <DetailView prompt={selected} onClose={() => setMobileSheetOpen(false)} />
+              )}
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </section>
