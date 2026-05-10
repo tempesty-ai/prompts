@@ -5,23 +5,23 @@ import { useEffect, useRef, useState } from "react";
 const features = [
   {
     number: "01",
-    title: "Real prompt examples",
-    description: "Browse practical image prompts sourced from trending public examples, grouped into clear creative categories.",
+    title: "실전 Prompt 예시",
+    description: "트렌딩 공개 예시에서 가져온 이미지 prompt를 카테고리별로 정리했습니다.",
   },
   {
     number: "02",
-    title: "Visual-first catalog",
-    description: "Scan ideas by thumbnail, category, rank, metrics, and source context instead of digging through raw prompt dumps.",
+    title: "비주얼 중심 카탈로그",
+    description: "raw prompt 덤프 대신 썸네일, 카테고리, 랭크, 메트릭, 출처 정보를 한눈에 확인하세요.",
   },
   {
     number: "03",
-    title: "Korean-ready generation",
-    description: "Copy a cleaned prompt wrapper that asks the model to avoid garbled text and localize visible copy for Korean outputs.",
+    title: "한국어 대응 prompt",
+    description: "모델에 어울리는 clean prompt wrapper를 복사해 한국어 출력에 맞게 사용할 수 있습니다.",
   },
   {
     number: "04",
-    title: "R2 image pipeline",
-    description: "Use generated images when available, then fall back to source thumbnails so the catalog never opens on empty cards.",
+    title: "R2 이미지 파이프라인",
+    description: "생성된 이미지가 있으면 우선 사용하고, 없으면 소스 썸네일로 대체해 빈 카드가 없도록 합니다.",
   },
 ];
 
@@ -83,12 +83,12 @@ export function FeaturesSection() {
         <div className="mb-16 lg:mb-24">
           <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
             <span className="w-8 h-px bg-foreground/30" />
-            WHAT IT DOES
+            무엇을 하는지
           </span>
           <h2 className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            A cleaner way to browse
+            이미지 prompt ideas를
             <br />
-            <span className="text-muted-foreground">image prompt ideas.</span>
+            더 깔끔하게 훑어보는 방법.
           </h2>
         </div>
 

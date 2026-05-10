@@ -61,12 +61,12 @@ export function MetricsSection() {
           <div>
             <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
               <span className="w-8 h-px bg-foreground/30" />
-              CATALOG HEALTH
+              CATALOG 상태
             </span>
             <h2 className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-              Smaller dataset,
+              더 작은 데이터셋,
               <br />
-              better signal.
+              더 나은 signal.
             </h2>
           </div>
           <div className="flex items-center gap-4 font-mono text-sm text-muted-foreground">

@@ -48,32 +48,31 @@ export function HeroSection() {
         <div className={`mb-8 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
           <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground">
             <span className="w-8 h-px bg-foreground/30" />
-            1,446 trending image prompts
+            1,415 Trending image prompts
           </span>
         </div>
 
         <div className="mb-12">
           <h1 className={`text-[clamp(3rem,12vw,10rem)] font-display leading-[0.9] tracking-tight transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-            <span className="block">Prompt ideas</span>
-            <span className="block text-muted-foreground">worth browsing.</span>
+            <span className="block">Prompts K</span>
           </h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-24 items-end">
           <p className={`text-xl lg:text-2xl text-muted-foreground leading-relaxed max-w-xl transition-all duration-700 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            A curated catalog of trending NanoBanana and image-generation prompts for posters, products, UI mockups,
-            photography concepts, and campaign visuals.
+            포스터, 제품, UI mockup, 사진 콘셉트, 캠페인 비주얼에 쓸 수 있는
+            NanoBanana 및 image-generation prompts 카탈로그입니다.
           </p>
 
           <div className={`flex flex-col sm:flex-row items-start gap-4 transition-all duration-700 delay-300 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
             <Button size="lg" className="bg-foreground hover:bg-foreground/90 text-background px-8 h-14 text-base rounded-full group" asChild>
               <a href="#catalog">
-                Browse Catalog
+                Catalog 보기
                 <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
               </a>
             </Button>
             <Button size="lg" variant="outline" className="h-14 px-8 text-base rounded-full border-foreground/20 hover:bg-foreground/5" onClick={handleRandom}>
-              Random Prompt
+              랜덤 Prompt
             </Button>
           </div>
         </div>

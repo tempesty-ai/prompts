@@ -42,21 +42,22 @@ export function CtaSection() {
             <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
               <div className="flex-1">
                 <h2 className="text-4xl lg:text-7xl font-display tracking-tight mb-8 leading-[0.95]">
-                  Start from a prompt.
+                  Prompt에서 시작하세요.
                   <br />
-                  Ship a visual idea.
+                  Visual idea를 완성하세요.
                 </h2>
                 <p className="text-xl text-muted-foreground mb-12 leading-relaxed max-w-xl">
-                  Browse the catalog, copy a cleaned generation prompt, and replace source thumbnails with finished generated images over time.
+                  Catalog를 둘러보고 정리된 generation prompt를 복사해
+                  소스 썸네일을 생성 이미지로 점진적으로 바꾸세요.
                 </p>
                 <Button size="lg" className="bg-foreground hover:bg-foreground/90 text-background px-8 h-14 text-base rounded-full group" asChild>
                   <a href="#catalog">
-                    Go to Catalog
+                    Catalog로 이동
                     <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
                   </a>
                 </Button>
                 <p className="text-sm text-muted-foreground mt-8 font-mono">
-                  Source thumbnails first. Generated R2 thumbnails when ready.
+                  먼저 Source thumbnails, 준비되면 Generated R2 thumbnails.
                 </p>
               </div>
 

@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
 const navLinks = [
-  { name: "Features", href: "#features" },
-  { name: "Workflow", href: "#how-it-works" },
   { name: "Catalog", href: "#catalog" },
 ];
 
@@ -34,9 +31,6 @@ export function Navigation() {
             <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl" : "text-2xl"}`}>
               Prompts K
             </span>
-            <span className={`text-muted-foreground font-mono transition-all duration-500 ${isScrolled ? "text-[10px] mt-0.5" : "text-xs mt-1"}`}>
-              curated
-            </span>
           </a>
 
           <div className="hidden md:flex items-center gap-12">
@@ -46,16 +40,6 @@ export function Navigation() {
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-foreground transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
-          </div>
-
-          <div className="hidden md:flex items-center gap-4">
-            <Button
-              size="sm"
-              className={`bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all duration-500 ${isScrolled ? "px-4 h-8 text-xs" : "px-6"}`}
-              asChild
-            >
-              <a href="#catalog">Open Catalog</a>
-            </Button>
           </div>
 
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden p-2" aria-label="Toggle menu">
@@ -85,17 +69,6 @@ export function Navigation() {
                 {link.name}
               </a>
             ))}
-          </div>
-
-          <div
-            className={`flex gap-4 pt-8 border-t border-foreground/10 transition-all duration-500 ${
-              isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-            style={{ transitionDelay: isMobileMenuOpen ? "300ms" : "0ms" }}
-          >
-            <Button className="flex-1 bg-foreground text-background rounded-full h-14 text-base" onClick={() => setIsMobileMenuOpen(false)} asChild>
-              <a href="#catalog">Open Catalog</a>
-            </Button>
           </div>
         </div>
       </div>

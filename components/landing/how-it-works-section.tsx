@@ -5,24 +5,24 @@ import { useEffect, useRef, useState } from "react";
 const steps = [
   {
     number: "I",
-    title: "Import the source catalog",
-    description: "Pull the NanoBanana trending prompt data, normalize it, and remove broken text from visible fields.",
+    title: "원본 카탈로그 가져오기",
+    description: "NanoBanana trending prompt 데이터를 불러와 정규화하고, 화면에 보이는 텍스트를 정리합니다.",
     code: `npm run import:nanobanana
 source: jau123/nanobanana-trending-prompts
 output: public/nanobanana-trending-prompts/prompts-ko.json`,
   },
   {
     number: "II",
-    title: "Browse and shortlist",
-    description: "Filter by prompt type, metrics, source image availability, or rank to find ideas worth testing.",
+    title: "둘러보고 후보 추리기",
+    description: "prompt 타입, 메트릭, 소스 이미지 유무, 랭크로 테스트할 아이디어를 고릅니다.",
     code: `filters: poster, product, UI, photo
 sort: featured, newest, oldest, title
 queue: incomplete items first`,
   },
   {
     number: "III",
-    title: "Generate final thumbnails",
-    description: "Use the batch script or admin uploader to replace source thumbnails with clean generated R2 images.",
+    title: "최종 썸네일 생성",
+    description: "배치 스크립트 또는 관리자 업로더로 소스 썸네일을 깨끗한 R2 생성 이미지로 교체합니다.",
     code: `npm run generate:images -- --limit 20
 output: generated-r2-queue/{id}.png
 priority: R2 image > source image > placeholder`,
@@ -56,9 +56,9 @@ export function HowItWorksSection() {
             WORKFLOW
           </span>
           <h2 className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
-            From source prompt
+            Source prompt에서
             <br />
-            <span className="text-background/50">to finished thumbnail.</span>
+            <span className="text-background/50">finished thumbnail까지.</span>
           </h2>
         </div>
 

@@ -33,6 +33,10 @@ interface Prompt {
 
 type FilterType = "all" | "incomplete" | "complete";
 
+function rankAsc(a: Prompt, b: Prompt) {
+  return Number(a.rank ?? 999999) - Number(b.rank ?? 999999);
+}
+
 function formatPromptContent(value: string) {
   const text = String(value || "").trim();
   if (!text) return "";
@@ -105,9 +109,9 @@ function PromptAdminCard({
       setPreviewUrl(newUrl);
       setImgFailed(false);
       onUploaded(prompt.id, newUrl);
-      toast.success(`#${prompt.rank ?? prompt.id} uploaded`);
+      toast.success(`#${prompt.rank ?? prompt.id} 업로드됨`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
+      toast.error(err instanceof Error ? err.message : "업로드 실패");
     } finally {
       setUploading(false);
     }
@@ -116,12 +120,12 @@ function PromptAdminCard({
   const copyKorean = async () => {
     await navigator.clipboard.writeText(koreanizedWrapper(prompt));
     window.open("https://chatgpt.com", "_blank");
-    toast.success("Prompt copied. Paste it into ChatGPT.", { duration: 4000 });
+    toast.success("프롬프트를 복사했습니다. ChatGPT에 붙여넣으세요.", { duration: 4000 });
   };
 
   return (
     <div className={`border transition-all duration-200 ${isComplete ? "border-foreground/30 bg-foreground/3" : "border-foreground/10 bg-background"}`}>
-      <div className="relative aspect-video overflow-hidden bg-foreground/5">
+      <div className="relative aspect-video overflow-hidden bg-white">
         {previewUrl && !imgFailed ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -129,7 +133,7 @@ function PromptAdminCard({
               src={previewUrl}
               alt={prompt.title}
               loading="lazy"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={() => {
                 const isR2Probe = isComplete && previewUrl.includes(`/prompts/${prompt.id}.`);
                 if (isR2Probe && r2ExtIndex < R2_IMAGE_EXTS.length - 1) {
@@ -164,11 +168,11 @@ function PromptAdminCard({
         >
           <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-background/90 text-xs font-mono px-3 py-1.5 flex items-center gap-1.5">
             {uploading ? (
-              "Uploading..."
+              "업로드 중..."
             ) : (
               <>
                 <Upload className="w-3 h-3" />
-                Upload image
+                이미지 업로드
               </>
             )}
           </span>
@@ -177,7 +181,7 @@ function PromptAdminCard({
         <input
           ref={fileRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/*"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -251,13 +255,21 @@ export default function AdminPage() {
     setCompletedIds((prev) => new Set([...prev, id]));
   }, []);
 
-  const filteredAll = prompts.filter((p) => {
-    if (filter === "complete" && !completedIds.has(p.id)) return false;
-    if (filter === "incomplete" && completedIds.has(p.id)) return false;
-    if (!query.trim()) return true;
-    const q = query.toLowerCase();
-    return p.title.toLowerCase().includes(q) || String(p.rank ?? "").includes(q) || p.id.includes(q);
-  });
+  const filteredAll = prompts
+    .filter((p) => {
+      if (filter === "complete" && !completedIds.has(p.id)) return false;
+      if (filter === "incomplete" && completedIds.has(p.id)) return false;
+      if (!query.trim()) return true;
+      const q = query.toLowerCase();
+      return p.title.toLowerCase().includes(q) || String(p.rank ?? "").includes(q) || p.id.includes(q);
+    })
+    .sort((a, b) => {
+      if (filter === "all") {
+        return Number(completedIds.has(a.id)) - Number(completedIds.has(b.id)) || rankAsc(a, b);
+      }
+
+      return rankAsc(a, b);
+    });
 
   const filtered = todayOnly && filter === "incomplete" ? filteredAll.slice(0, dailyLimit) : filteredAll;
   const visible = filtered.slice(0, visibleLimit);
@@ -270,7 +282,7 @@ export default function AdminPage() {
       <div className="max-w-[1400px] mx-auto px-6 py-12">
         <div className="mb-10">
           <span className="text-xs font-mono text-muted-foreground">ADMIN</span>
-          <h1 className="text-3xl font-display mt-1 mb-6">Generated Image Queue</h1>
+          <h1 className="text-3xl font-display mt-1 mb-6">생성 이미지 대기열</h1>
 
           <div className="border border-foreground/10 p-6">
             <div className="flex items-end justify-between mb-3">
@@ -282,7 +294,7 @@ export default function AdminPage() {
                     {total.toLocaleString("en-US")}
                   </span>
                 </p>
-                <p className="text-xs text-muted-foreground font-mono mt-0.5">uploaded / total</p>
+                <p className="text-xs text-muted-foreground font-mono mt-0.5">업로드 / 전체</p>
               </div>
               <p className="text-4xl font-display text-foreground/40">{pct}%</p>
             </div>
@@ -290,7 +302,7 @@ export default function AdminPage() {
               <div className="bg-foreground h-1.5 transition-all duration-500" style={{ width: `${pct}%` }} />
             </div>
             <p className="text-xs font-mono text-muted-foreground mt-2">
-              Remaining {(total - done).toLocaleString("en-US")}
+              남은 항목 {(total - done).toLocaleString("en-US")}개
             </p>
           </div>
         </div>
@@ -300,7 +312,7 @@ export default function AdminPage() {
             <Search className="w-4 h-4 ml-3 text-muted-foreground shrink-0" />
             <input
               type="search"
-              placeholder="Search title, rank, or ID..."
+              placeholder="title, rank, ID 검색..."
               autoComplete="off"
               onChange={(e) => {
                 setQuery(e.target.value);
@@ -362,7 +374,7 @@ export default function AdminPage() {
               />
             </label>
             <span className="text-xs font-mono text-muted-foreground">
-              {todayOnly ? `Showing first ${filtered.length.toLocaleString("en-US")} incomplete items` : "Showing all incomplete items"}
+              {todayOnly ? `처음 ${filtered.length.toLocaleString("en-US")}개 미완료 항목 표시` : "모든 미완료 항목 표시"}
             </span>
           </div>
         )}
@@ -379,7 +391,7 @@ export default function AdminPage() {
           </div>
         ) : visible.length === 0 ? (
           <div className="py-24 text-center text-muted-foreground font-mono text-sm">
-            {filter === "complete" ? "No completed items." : filter === "incomplete" ? "No incomplete items." : "No results."}
+            {filter === "complete" ? "완료된 항목이 없습니다." : filter === "incomplete" ? "미완료 항목이 없습니다." : "결과가 없습니다."}
           </div>
         ) : (
           <>
@@ -402,7 +414,7 @@ export default function AdminPage() {
                   onClick={() => setVisibleLimit((prev) => prev + PAGE_SIZE)}
                 >
                   <ChevronDown className="w-4 h-4" />
-                  Load more ({(filtered.length - visibleLimit).toLocaleString("en-US")} left)
+                  더 보기 ({(filtered.length - visibleLimit).toLocaleString("en-US")}개 남음)
                 </Button>
               </div>
             )}

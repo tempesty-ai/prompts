@@ -7,12 +7,6 @@ const footerLinks = {
     { name: "All prompts", href: "#catalog" },
     { name: "Featured", href: "#catalog" },
     { name: "Source images", href: "#catalog" },
-    { name: "Reference prompts", href: "#catalog" },
-  ],
-  Workflow: [
-    { name: "Import data", href: "#how-it-works" },
-    { name: "Browse ideas", href: "#how-it-works" },
-    { name: "Generate images", href: "#how-it-works" },
   ],
   Source: [
     { name: "NanoBanana prompts", href: "https://github.com/jau123/nanobanana-trending-prompts" },
@@ -36,11 +30,11 @@ export function FooterSection() {
                 <span className="text-xs text-muted-foreground font-mono">catalog</span>
               </a>
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">
-                A compact catalog for browsing trending image-generation prompts and preparing cleaner generated thumbnails.
+                이미지 생성 프롬프트를 빠르게 탐색하고, 소스 이미지와 원문을 바로 확인하는 compact catalog.
               </p>
               <div className="inline-flex items-center gap-2 text-sm text-muted-foreground font-mono">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                local catalog running
+                local catalog ready
               </div>
             </div>
 

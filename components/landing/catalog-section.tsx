@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Copy, ExternalLink, ChevronDown, Search, ImageOff } from "lucide-react";
+import { Copy, ExternalLink, ChevronDown, Search, ImageOff, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -45,6 +45,7 @@ interface Prompt {
   categories?: string[];
   likes?: number;
   views?: number;
+  score?: number;
   featured?: boolean;
   need_reference_images?: boolean;
   media?: string[];
@@ -85,11 +86,35 @@ function formatPromptContent(value: string) {
   if (!text) return "";
   const fenced = text.match(/^```(?:json|text)?\s*([\s\S]*?)\s*```$/i);
   const clean = fenced ? fenced[1].trim() : text;
+
   try {
     return JSON.stringify(JSON.parse(clean), null, 2);
   } catch {
-    return clean.replace(/\r\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    return clean
+      .replace(/\r\n/g, "\n")
+      .replace(/\s+(?=(?:Include|Style|Perspective|Colors|Output|Subject|Composition|Lighting|Background|Camera|Mood|Negative Prompt|Aspect Ratio):)/gi, "\n\n")
+      .replace(/([.!?])\s+(?=[A-Z가-힣])/g, "$1\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
   }
+}
+
+function renderPromptContent(value: string) {
+  const placeholderPattern = /(\[[^\]\n]{1,80}\]|\{[A-Z][A-Z0-9 _-]{1,80}\}|<[^>\n]{1,80}>)/g;
+  const exactPlaceholderPattern = /^(\[[^\]\n]{1,80}\]|\{[A-Z][A-Z0-9 _-]{1,80}\}|<[^>\n]{1,80}>)$/;
+  const parts = value.split(placeholderPattern);
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+    if (exactPlaceholderPattern.test(part)) {
+      return (
+        <span key={index} className="font-semibold text-red-600">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
 }
 
 function koreanizedWrapper(prompt: Prompt) {
@@ -114,22 +139,85 @@ Source prompt:
 ${formattedPrompt}`;
 }
 
-function PromptThumbnail({ prompt }: { prompt: Prompt }) {
+function rankAsc(a: Prompt, b: Prompt) {
+  return Number(a.rank ?? 999999) - Number(b.rank ?? 999999);
+}
+
+function dateDesc(a: Prompt, b: Prompt) {
+  return new Date(b.source_published_at ?? 0).getTime() - new Date(a.source_published_at ?? 0).getTime();
+}
+
+function mediaCount(prompt: Prompt) {
+  return prompt.media?.length ?? prompt.media_thumbnails?.length ?? 0;
+}
+
+function engagementScore(prompt: Prompt) {
+  return Number(prompt.score ?? 0) || Number(prompt.likes ?? 0) * 10 + Number(prompt.views ?? 0) / 1000;
+}
+
+function termScore(prompt: Prompt, terms: string[]) {
+  if (terms.length === 0) return 0;
+  const title = prompt.title.toLowerCase();
+  const categories = (prompt.categories ?? []).join(" ").toLowerCase();
+  const body = textOf(prompt);
+
+  return terms.reduce((score, term) => {
+    const lower = term.toLowerCase();
+    if (title.includes(lower)) return score + 8;
+    if (categories.includes(lower)) return score + 5;
+    if (body.includes(lower)) return score + 1;
+    return score;
+  }, 0);
+}
+
+function recommendedSort(filter: string, tag: (typeof quickTags)[0] | null, query: string) {
+  const queryTerms = query.trim() ? [query.trim()] : [];
+  const terms = [...(tag?.terms ?? []), ...queryTerms];
+
+  return (a: Prompt, b: Prompt) => {
+    const relevance = termScore(b, terms) - termScore(a, terms);
+    if (relevance) return relevance;
+
+    if (filter === "media") {
+      return mediaCount(b) - mediaCount(a) || Number(b.featured ?? 0) - Number(a.featured ?? 0) || rankAsc(a, b);
+    }
+
+    if (filter === "reference") {
+      return mediaCount(b) - mediaCount(a) || dateDesc(a, b) || rankAsc(a, b);
+    }
+
+    if (filter === "featured") {
+      return engagementScore(b) - engagementScore(a) || rankAsc(a, b);
+    }
+
+    return Number(b.featured ?? 0) - Number(a.featured ?? 0) || engagementScore(b) - engagementScore(a) || rankAsc(a, b);
+  };
+}
+
+function PromptThumbnail({ prompt, onUnavailable }: { prompt: Prompt; onUnavailable: () => void }) {
   const [extIndex, setExtIndex] = useState(0);
   const [r2Failed, setR2Failed] = useState(false);
   const [sourceFailed, setSourceFailed] = useState(false);
   const r2 = r2ImageUrl(prompt.id, R2_IMAGE_EXTS[extIndex]);
   const sourceImage = prompt.media?.[0] || prompt.media_thumbnails?.[0] || "";
 
+  const overlay = (
+    <span className="absolute inset-0 flex items-center justify-center bg-background/0 opacity-0 transition-all duration-200 group-hover/thumbnail:bg-background/20 group-hover/thumbnail:opacity-100">
+      <span className="inline-flex size-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm">
+        <Eye className="size-4" />
+      </span>
+    </span>
+  );
+
   if (r2 && !r2Failed) {
     return (
-      <div className="relative aspect-video overflow-hidden bg-foreground/5">
+      <div className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={r2}
           alt={`${prompt.title} generated thumbnail`}
           loading="lazy"
-          className="w-full h-full object-cover"
+          className="h-full w-full object-contain transition-transform duration-200 group-hover/thumbnail:scale-[1.02]"
           onError={() => {
             if (extIndex < R2_IMAGE_EXTS.length - 1) {
               setExtIndex((prev) => prev + 1);
@@ -138,35 +226,40 @@ function PromptThumbnail({ prompt }: { prompt: Prompt }) {
             }
           }}
         />
-        <span className="absolute bottom-2 right-2 text-[10px] font-mono bg-background/80 px-1.5 py-0.5">
+        <span className="absolute bottom-2 right-2 bg-background/80 px-1.5 py-0.5 font-mono text-[10px]">
           R2
         </span>
+        {overlay}
       </div>
     );
   }
 
   if (sourceImage && !sourceFailed) {
     return (
-      <div className="relative aspect-video overflow-hidden bg-foreground/5">
+      <div className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sourceImage}
           alt={`${prompt.title} source thumbnail`}
           loading="lazy"
-          className="w-full h-full object-cover"
-          onError={() => setSourceFailed(true)}
+          className="h-full w-full object-contain transition-transform duration-200 group-hover/thumbnail:scale-[1.02]"
+          onError={() => {
+            setSourceFailed(true);
+            onUnavailable();
+          }}
         />
-        <span className="absolute bottom-2 right-2 text-[10px] font-mono bg-background/80 px-1.5 py-0.5">
+        <span className="absolute bottom-2 right-2 bg-background/80 px-1.5 py-0.5 font-mono text-[10px]">
           Source
         </span>
+        {overlay}
       </div>
     );
   }
 
   return (
-    <div className="aspect-video bg-foreground/5 flex flex-col items-center justify-center gap-1 px-4">
-      <ImageOff className="w-6 h-6 text-foreground/20" />
-      <span className="text-[10px] font-mono text-foreground/30 text-center line-clamp-2">
+    <div className="flex aspect-video flex-col items-center justify-center gap-1 bg-foreground/5 px-4">
+      <ImageOff className="h-6 w-6 text-foreground/20" />
+      <span className="line-clamp-2 text-center font-mono text-[10px] text-foreground/30">
         {prompt.title}
       </span>
     </div>
@@ -177,40 +270,42 @@ function PromptCard({
   prompt,
   isSelected,
   onClick,
+  onUnavailable,
 }: {
   prompt: Prompt;
   isSelected: boolean;
   onClick: () => void;
+  onUnavailable: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left border transition-all duration-200 hover:border-foreground/30 ${
+      className={`w-full border text-left transition-all duration-200 hover:border-foreground/30 ${
         isSelected ? "border-foreground bg-foreground/5" : "border-foreground/10 bg-background"
       }`}
     >
-      <PromptThumbnail prompt={prompt} />
+      <PromptThumbnail prompt={prompt} onUnavailable={onUnavailable} />
       <div className="p-4">
-        <h3 className="font-medium text-sm mb-1 line-clamp-2">{prompt.title}</h3>
-        <p className="text-xs text-muted-foreground line-clamp-2">{prompt.description}</p>
-        <div className="flex flex-wrap gap-1 mt-3">
+        <h3 className="mb-1 line-clamp-2 text-sm font-medium">{prompt.title}</h3>
+        <p className="line-clamp-2 text-xs text-muted-foreground">{prompt.description}</p>
+        <div className="mt-3 flex flex-wrap gap-1">
           {prompt.featured && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 bg-foreground text-background">
+            <span className="bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
               Featured
             </span>
           )}
           {prompt.need_reference_images && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/30">
-              Reference
+            <span className="border border-foreground/30 px-1.5 py-0.5 font-mono text-[10px]">
+              참조 필요
             </span>
           )}
           {(prompt.media?.length ?? 0) > 0 && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/10">
+            <span className="border border-foreground/10 px-1.5 py-0.5 font-mono text-[10px]">
               Source {prompt.media!.length}
             </span>
           )}
-          <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/10 text-foreground/40">
+          <span className="border border-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-foreground/40">
             #{prompt.rank ?? prompt.id}
           </span>
         </div>
@@ -220,140 +315,209 @@ function PromptCard({
 }
 
 function DetailView({ prompt, onClose }: { prompt: Prompt; onClose: () => void }) {
-  const [showImages, setShowImages] = useState(false);
+  const sourceImages = (prompt.media?.length ? prompt.media : prompt.media_thumbnails) ?? [];
+  const [selectedSourceImage, setSelectedSourceImage] = useState(sourceImages[0] ?? "");
+  const [activeImage, setActiveImage] = useState<string | null>(null);
   const formattedPrompt = formatPromptContent(prompt.prompt || prompt.original_prompt || "");
+
+  useEffect(() => {
+    setSelectedSourceImage(sourceImages[0] ?? "");
+  }, [prompt.id]);
 
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(formattedPrompt);
-    toast.success("Source prompt copied");
+    toast.success("소스 프롬프트를 복사했습니다.");
   };
 
   const copyKoreanized = async () => {
     await navigator.clipboard.writeText(koreanizedWrapper(prompt));
     window.open("https://chatgpt.com", "_blank");
-    toast.success("Korean-ready prompt copied. Paste it into ChatGPT.", { duration: 5000 });
+    toast.success("한국어용 프롬프트를 복사했습니다. ChatGPT에 붙여넣으세요.", { duration: 5000 });
   };
 
   return (
-    <div className="border border-foreground/10 bg-background h-full flex flex-col">
-      <div className="px-6 py-5 border-b border-foreground/10 flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap gap-1 mb-2">
+    <div className="flex h-full flex-col border border-foreground/10 bg-background">
+      <div className="flex items-start justify-between gap-4 border-b border-foreground/10 px-6 py-5">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap gap-1">
             {prompt.featured && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-foreground text-background">
+              <span className="bg-foreground px-1.5 py-0.5 font-mono text-[10px] text-background">
                 Featured
               </span>
             )}
             {prompt.need_reference_images && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/30">
-                Reference needed
+              <span className="border border-foreground/30 px-1.5 py-0.5 font-mono text-[10px]">
+                참조 필요
               </span>
             )}
-            <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/10 text-foreground/40">
+            <span className="border border-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-foreground/40">
               #{prompt.id}
             </span>
             {prompt.model && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 border border-foreground/10 text-foreground/40">
+              <span className="border border-foreground/10 px-1.5 py-0.5 font-mono text-[10px] text-foreground/40">
                 {prompt.model}
               </span>
             )}
           </div>
-          <h2 className="text-lg font-display leading-snug">{prompt.title}</h2>
+          <h2 className="font-display text-lg leading-snug">{prompt.title}</h2>
           {prompt.description && (
-            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{prompt.description}</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{prompt.description}</p>
           )}
         </div>
         <button
           onClick={onClose}
-          className="text-muted-foreground hover:text-foreground text-xs font-mono shrink-0 mt-1"
+          className="mt-1 shrink-0 font-mono text-xs text-muted-foreground hover:text-foreground"
         >
-          Close
+          닫기
         </button>
       </div>
 
-      <div className="px-6 py-4 border-b border-foreground/10 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 border-b border-foreground/10 px-6 py-4">
         <Button
           size="sm"
-          className="bg-foreground text-background hover:bg-foreground/90 rounded-full text-xs h-8 gap-1.5"
+          className="h-8 gap-1.5 rounded-full bg-foreground text-xs text-background hover:bg-foreground/90"
           onClick={copyKoreanized}
         >
-          <Copy className="w-3 h-3" />
-          Copy Korean-ready prompt
+          <Copy className="h-3 w-3" />
+          한국어용 복사
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="rounded-full text-xs h-8 gap-1.5 border-foreground/20"
+          className="h-8 gap-1.5 rounded-full border-foreground/20 text-xs"
           onClick={copyPrompt}
         >
-          <Copy className="w-3 h-3" />
-          Copy source prompt
+          <Copy className="h-3 w-3" />
+          소스 복사
         </Button>
-        {(prompt.media?.length ?? 0) > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-full text-xs h-8 border-foreground/20"
-            onClick={() => setShowImages(!showImages)}
-          >
-            Source images {showImages ? "Hide" : "Show"}
-          </Button>
-        )}
         {prompt.source_link && (
           <a
             href={prompt.source_link}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-mono h-8 px-3 border border-foreground/10 rounded-full"
+            className="inline-flex h-8 items-center gap-1 rounded-full border border-foreground/10 px-3 font-mono text-xs text-muted-foreground hover:text-foreground"
           >
-            Source <ExternalLink className="w-3 h-3" />
+            원본 <ExternalLink className="h-3 w-3" />
           </a>
         )}
       </div>
 
       {prompt.need_reference_images && (
-        <div className="px-6 py-3 bg-foreground/5 border-b border-foreground/10 text-xs text-muted-foreground leading-relaxed">
-          This prompt expects a reference image. Use the copied Korean-ready prompt with an appropriate input image.
-        </div>
-      )}
-
-      {showImages && (prompt.media?.length ?? 0) > 0 && (
-        <div className="px-6 py-4 border-b border-foreground/10 flex gap-2 overflow-x-auto">
-          {prompt.media!.map((src, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={src}
-              alt={`${prompt.title} source image ${i + 1}`}
-              loading="lazy"
-              className="h-36 w-auto rounded object-cover shrink-0"
-            />
-          ))}
+        <div className="border-b border-foreground/10 bg-foreground/5 px-6 py-3 text-xs leading-relaxed text-muted-foreground">
+          이 프롬프트는 참조 이미지가 필요합니다. 복사한 한국어용 프롬프트와 적절한 입력 이미지를 함께 사용하세요.
         </div>
       )}
 
       <div className="flex-1 overflow-auto p-6">
-        <pre className="text-xs font-mono text-foreground/70 whitespace-pre-wrap leading-relaxed">
-          {formattedPrompt}
+        {selectedSourceImage && (
+          <div className="mb-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                소스 이미지
+              </span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {sourceImages.length.toLocaleString("en-US")}장
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveImage(selectedSourceImage)}
+              className="group relative flex h-[min(42vh,360px)] min-h-56 w-full items-center justify-center overflow-hidden rounded-md border border-foreground/10 bg-white"
+              aria-label="소스 이미지 크게 보기"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selectedSourceImage}
+                alt={`${prompt.title} 소스 이미지`}
+                loading="lazy"
+                className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-[1.01]"
+              />
+              <span className="absolute bottom-3 right-3 bg-background/90 px-2.5 py-1 font-mono text-[10px] text-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                크게 보기
+              </span>
+            </button>
+            {sourceImages.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {sourceImages.map((src, i) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setSelectedSourceImage(src)}
+                    className={`h-16 w-20 shrink-0 overflow-hidden rounded border bg-white ${
+                      selectedSourceImage === src ? "border-foreground" : "border-foreground/10 hover:border-foreground/30"
+                    }`}
+                    aria-label={`소스 이미지 ${i + 1} 선택`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={src}
+                      alt={`${prompt.title} 소스 썸네일 ${i + 1}`}
+                      loading="lazy"
+                      className="h-full w-full object-contain"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              소스 프롬프트
+            </span>
+            <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 font-mono text-[10px] text-red-700">
+              빨간 텍스트는 직접 바꿔서 사용하세요
+            </span>
+          </div>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {formattedPrompt.split("\n").length.toLocaleString("en-US")} lines
+          </span>
+        </div>
+        <pre className="whitespace-pre-wrap break-words rounded-md border border-foreground/10 bg-foreground/[0.025] p-4 font-mono text-xs leading-6 text-foreground/75 tabular-nums">
+          {renderPromptContent(formattedPrompt)}
         </pre>
       </div>
+
+      {activeImage && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setActiveImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setActiveImage(null)}
+            className="absolute right-4 top-4 inline-flex size-10 items-center justify-center rounded-full border border-foreground/15 bg-background/90 text-foreground hover:bg-foreground hover:text-background"
+            aria-label="소스 이미지 미리보기 닫기"
+          >
+            <X className="size-4" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={activeImage}
+            alt={`${prompt.title} 확대된 소스 이미지`}
+            className="max-h-[88vh] max-w-[92vw] object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
-}
-
-function dateDesc(a: Prompt, b: Prompt) {
-  return new Date(b.source_published_at ?? 0).getTime() - new Date(a.source_published_at ?? 0).getTime();
 }
 
 export function CatalogSection() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [filtered, setFiltered] = useState<Prompt[]>([]);
+  const [unavailableIds, setUnavailableIds] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Prompt | null>(null);
   const [activeFilter, setActiveFilter] = useState("all");
   const [activeTag, setActiveTag] = useState<(typeof quickTags)[0] | null>(null);
   const [visibleLimit, setVisibleLimit] = useState(PAGE_SIZE);
   const [query, setQuery] = useState("");
-  const [sort, setSort] = useState("featured");
+  const [sort, setSort] = useState("recommended");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
@@ -362,23 +526,25 @@ export function CatalogSection() {
   const applyFilter = useCallback(
     (allPrompts: Prompt[], q: string, filter: string, tag: (typeof quickTags)[0] | null, sortKey: string) => {
       const lower = q.trim().toLowerCase();
-      let result = allPrompts.filter((p) => {
+      const result = allPrompts.filter((p) => {
         if (filter === "featured" && !p.featured) return false;
         if (filter === "reference" && !p.need_reference_images) return false;
-        if (filter === "media" && (!p.media || p.media.length === 0)) return false;
+        if (filter === "media" && mediaCount(p) === 0) return false;
         if (!matchesTag(p, tag)) return false;
         if (!lower) return true;
         return textOf(p).includes(lower);
       });
 
       const sorters: Record<string, (a: Prompt, b: Prompt) => number> = {
-        featured: (a, b) => Number(b.featured ?? 0) - Number(a.featured ?? 0) || Number(a.rank ?? 999999) - Number(b.rank ?? 999999),
+        recommended: recommendedSort(filter, tag, q),
+        featured: (a, b) => Number(b.featured ?? 0) - Number(a.featured ?? 0) || rankAsc(a, b),
+        popular: (a, b) => engagementScore(b) - engagementScore(a) || rankAsc(a, b),
         newest: dateDesc,
         oldest: (a, b) => new Date(a.source_published_at ?? 0).getTime() - new Date(b.source_published_at ?? 0).getTime(),
         title: (a, b) => a.title.localeCompare(b.title),
       };
 
-      result.sort(sorters[sortKey] || sorters.featured);
+      result.sort(sorters[sortKey] || sorters.recommended);
       setFiltered(result);
       setVisibleLimit(PAGE_SIZE);
     },
@@ -395,7 +561,7 @@ export function CatalogSection() {
         const list: Prompt[] = data.prompts || [];
         setPrompts(list);
         setSelected(list[0] || null);
-        applyFilter(list, "", "all", null, "featured");
+        applyFilter(list, "", "all", null, "recommended");
         setLoading(false);
       })
       .catch(() => {
@@ -408,36 +574,49 @@ export function CatalogSection() {
     applyFilter(prompts, query, activeFilter, activeTag, sort);
   }, [prompts, query, activeFilter, activeTag, sort, applyFilter]);
 
-  const visible = filtered.slice(0, visibleLimit);
+  useEffect(() => {
+    const handleRandom = () => {
+      const pool = filtered.filter((p) => !unavailableIds.has(p.id));
+      const randomPrompt = pool[Math.floor(Math.random() * pool.length)];
+      if (randomPrompt) {
+        setSelected(randomPrompt);
+        setMobileSheetOpen(true);
+      }
+    };
+
+    window.addEventListener("catalog:random", handleRandom);
+    return () => window.removeEventListener("catalog:random", handleRandom);
+  }, [filtered, unavailableIds]);
+
+  const availableFiltered = filtered.filter((p) => !unavailableIds.has(p.id));
+  const visible = availableFiltered.slice(0, visibleLimit);
 
   return (
-    <section id="catalog" className="relative py-24 lg:py-32">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-        <div className="mb-12">
-          <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
-            <span className="w-8 h-px bg-foreground/30" />
+    <section id="catalog" className="relative py-20 lg:py-28">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
+        <div className="mb-10">
+          <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
+            <span className="h-px w-8 bg-foreground/30" />
             CATALOG
           </span>
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <h2 className="text-4xl lg:text-6xl font-display tracking-tight">
-              Trending Prompt Catalog
-            </h2>
-            <p className="text-muted-foreground font-mono text-sm">
-              {loading ? "Loading..." : error ? "Failed to load data" : `${prompts.length.toLocaleString("en-US")} prompts`}
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <h2 className="font-display text-4xl tracking-tight lg:text-6xl">Prompt Catalog</h2>
+            <p className="font-mono text-sm text-muted-foreground">
+              {loading ? "로딩 중..." : error ? "데이터 로드 실패" : `${prompts.length.toLocaleString("en-US")} prompts`}
             </p>
           </div>
         </div>
 
         <div className="mb-8">
-          <p className="text-xs font-mono text-muted-foreground mb-3">Quick filters</p>
+          <p className="mb-3 font-mono text-xs text-muted-foreground">빠른 필터</p>
           <div className="flex flex-wrap gap-2">
             {quickTags.map((tag) => (
               <button
                 key={tag.label}
                 type="button"
                 onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                className={`text-sm px-4 py-1.5 border transition-all duration-200 font-mono ${
-                  activeTag === tag ? "bg-foreground text-background border-foreground" : "border-foreground/20 hover:border-foreground/50"
+                className={`px-4 py-1.5 font-mono text-sm transition-all duration-200 ${
+                  activeTag === tag ? "bg-foreground text-background" : "border border-foreground/20 hover:border-foreground/50"
                 }`}
               >
                 {tag.label}
@@ -447,7 +626,7 @@ export function CatalogSection() {
         </div>
 
         <div className="mb-10">
-          <p className="text-xs font-mono text-muted-foreground mb-3">Popular searches</p>
+          <p className="mb-3 font-mono text-xs text-muted-foreground">추천 검색어</p>
           <div className="flex flex-wrap gap-2">
             {popularPills.map((pill) => (
               <button
@@ -457,7 +636,7 @@ export function CatalogSection() {
                   setQuery(pill.term);
                   if (searchRef.current) searchRef.current.value = pill.term;
                 }}
-                className="text-xs px-3 py-1 border border-foreground/10 hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-all font-mono"
+                className="border border-foreground/10 px-3 py-1 font-mono text-xs text-muted-foreground transition-all hover:border-foreground/30 hover:text-foreground"
               >
                 {pill.label}
               </button>
@@ -465,42 +644,44 @@ export function CatalogSection() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <label className="flex-1 flex items-center border border-foreground/20 focus-within:border-foreground transition-colors">
-            <Search className="w-4 h-4 ml-4 text-muted-foreground shrink-0" />
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+          <label className="flex flex-1 items-center border border-foreground/20 transition-colors focus-within:border-foreground">
+            <Search className="ml-4 h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               ref={searchRef}
               type="search"
-              placeholder="Search poster, product, UI, photo..."
+              placeholder="poster, product, UI, photo..."
               autoComplete="off"
               onChange={(e) => setQuery(e.target.value)}
-              className="flex-1 px-4 py-3 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
             />
           </label>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="px-4 py-3 border border-foreground/20 bg-background text-sm font-mono outline-none hover:border-foreground/40 transition-colors cursor-pointer"
+            className="cursor-pointer border border-foreground/20 bg-background px-4 py-3 font-mono text-sm outline-none transition-colors hover:border-foreground/40"
           >
-            <option value="featured">Featured first</option>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="title">Title</option>
+            <option value="recommended">추천순</option>
+            <option value="featured">Featured 먼저</option>
+            <option value="popular">인기순</option>
+            <option value="newest">최신순</option>
+            <option value="oldest">오래된순</option>
+            <option value="title">제목순</option>
           </select>
         </div>
 
-        <div className="flex gap-0 mb-6 border-b border-foreground/10">
+        <div className="mb-6 flex border-b border-foreground/10">
           {[
-            { value: "all", label: "All" },
+            { value: "all", label: "전체" },
             { value: "featured", label: "Featured" },
-            { value: "reference", label: "Reference needed" },
-            { value: "media", label: "Source image" },
+            { value: "reference", label: "참조 필요" },
+            { value: "media", label: "소스 이미지" },
           ].map((f) => (
             <button
               key={f.value}
               type="button"
               onClick={() => setActiveFilter(f.value)}
-              className={`px-4 py-2 text-sm font-mono border-b-2 transition-all -mb-px ${
+              className={`-mb-px border-b-2 px-4 py-2 font-mono text-sm transition-all ${
                 activeFilter === f.value ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -509,40 +690,38 @@ export function CatalogSection() {
           ))}
         </div>
 
-        <div className="flex gap-6 mb-8 text-sm font-mono text-muted-foreground">
+        <div className="mb-8 flex gap-6 font-mono text-sm text-muted-foreground">
           <span>
-            <strong className="text-foreground">{filtered.length.toLocaleString("en-US")}</strong> results
+            <strong className="text-foreground">{availableFiltered.length.toLocaleString("en-US")}</strong> results
           </span>
           <span>
             <strong className="text-foreground">{prompts.length.toLocaleString("en-US")}</strong> total
           </span>
           {selected && (
             <span>
-              Selected: <strong className="text-foreground">#{selected.rank ?? selected.id}</strong>
+              선택됨: <strong className="text-foreground">#{selected.rank ?? selected.id}</strong>
             </span>
           )}
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_420px] gap-8 items-start">
+        <div className="grid items-start gap-8 lg:grid-cols-[1fr_420px]">
           <div>
             {loading ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="border border-foreground/10 aspect-[4/3] animate-pulse bg-foreground/5" />
+                  <div key={i} className="aspect-[4/3] animate-pulse border border-foreground/10 bg-foreground/5" />
                 ))}
               </div>
             ) : error ? (
-              <div className="py-24 text-center text-muted-foreground font-mono text-sm">
-                <p>Could not load catalog data.</p>
-                <p className="mt-2 text-xs opacity-60">Make sure the local dev server is running.</p>
+              <div className="py-24 text-center font-mono text-sm text-muted-foreground">
+                <p>카탈로그 데이터를 불러오지 못했습니다.</p>
+                <p className="mt-2 text-xs opacity-60">로컬 개발 서버가 실행 중인지 확인하세요.</p>
               </div>
             ) : visible.length === 0 ? (
-              <div className="py-24 text-center text-muted-foreground font-mono text-sm">
-                No results.
-              </div>
+              <div className="py-24 text-center font-mono text-sm text-muted-foreground">결과가 없습니다.</div>
             ) : (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {visible.map((p) => (
                     <PromptCard
                       key={p.id}
@@ -552,19 +731,22 @@ export function CatalogSection() {
                         setSelected(p);
                         setMobileSheetOpen(true);
                       }}
+                      onUnavailable={() => {
+                        setUnavailableIds((prev) => new Set(prev).add(p.id));
+                        if (selected?.id === p.id) setSelected(null);
+                      }}
                     />
                   ))}
                 </div>
 
-                {visibleLimit < filtered.length && (
+                {visibleLimit < availableFiltered.length && (
                   <div className="mt-8 flex justify-center">
                     <Button
                       variant="outline"
-                      className="rounded-full border-foreground/20 gap-2"
+                      className="gap-2 rounded-full border-foreground/20"
                       onClick={() => setVisibleLimit((prev) => prev + PAGE_SIZE)}
                     >
-                      <ChevronDown className="w-4 h-4" />
-                      Load more ({(filtered.length - visibleLimit).toLocaleString("en-US")} left)
+                      <ChevronDown className="h-4 w-4" />더 보기 ({(availableFiltered.length - visibleLimit).toLocaleString("en-US")}개 남음)
                     </Button>
                   </div>
                 )}
@@ -572,24 +754,24 @@ export function CatalogSection() {
             )}
           </div>
 
-          <div className="hidden lg:block lg:sticky lg:top-24">
+          <div className="hidden lg:sticky lg:top-24 lg:block">
             {selected ? (
               <DetailView prompt={selected} onClose={() => setSelected(null)} />
             ) : (
-              <div className="border border-foreground/10 p-12 flex flex-col items-center justify-center text-center gap-3">
-                <Search className="w-8 h-8 text-foreground/20" />
-                <strong className="font-mono text-sm">Select a prompt</strong>
+              <div className="flex flex-col items-center justify-center gap-3 border border-foreground/10 p-12 text-center">
+                <Search className="h-8 w-8 text-foreground/20" />
+                <strong className="font-mono text-sm">프롬프트를 선택하세요</strong>
                 <span className="text-xs text-muted-foreground">
-                  Pick an item to view details and copy prompts.
+                  아이템을 선택하면 이미지와 소스 프롬프트를 볼 수 있습니다.
                 </span>
               </div>
             )}
           </div>
 
           <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-            <SheetContent side="bottom" className="lg:hidden h-[85vh] overflow-y-auto p-0">
+            <SheetContent side="bottom" className="h-[85vh] overflow-y-auto p-0 lg:hidden">
               <SheetHeader className="sr-only">
-                <SheetTitle>{selected?.title ?? "Prompt details"}</SheetTitle>
+                <SheetTitle>{selected?.title ?? "프롬프트 상세"}</SheetTitle>
               </SheetHeader>
               {selected && <DetailView prompt={selected} onClose={() => setMobileSheetOpen(false)} />}
             </SheetContent>

@@ -23,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Prompts K - NanoBanana Trending Prompt Catalog",
-  description: "A compact catalog for browsing trending image-generation prompts and preparing clean generated thumbnails.",
+  description: "Trending NanoBanana prompts 카탈로그. 이미지 생성 prompt를 빠르게 찾아 한국어 출력에 맞춘 썸네일 생성에 활용하세요.",
   generator: "prompts-k",
 };
 
@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <body className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
         {children}
         <Toaster />
