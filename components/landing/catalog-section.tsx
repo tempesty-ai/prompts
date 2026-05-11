@@ -240,7 +240,13 @@ function PromptThumbnail({
 
   if (r2 && !r2Failed) {
     return (
-      <div className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white">
+      <div
+        className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white"
+        onClick={(event) => {
+          event.stopPropagation();
+          onPreview?.(r2);
+        }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={r2}
@@ -265,7 +271,13 @@ function PromptThumbnail({
 
   if (sourceImage && !sourceFailed) {
     return (
-      <div className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white">
+      <div
+        className="group/thumbnail relative aspect-video cursor-zoom-in overflow-hidden bg-white"
+        onClick={(event) => {
+          event.stopPropagation();
+          onPreview?.(sourceImage);
+        }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={sourceImage}
