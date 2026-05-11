@@ -10,6 +10,11 @@ const DATA_URL = "/nanobanana-trending-prompts/prompts-ko.json";
 const PAGE_SIZE = 40;
 const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
 const R2_IMAGE_EXTS = ["jpg", "png", "webp", "gif"];
+const DESKTOP_BREAKPOINT_QUERY = "(min-width: 1024px)";
+
+function shouldOpenMobileSheet() {
+  return typeof window !== "undefined" && !window.matchMedia(DESKTOP_BREAKPOINT_QUERY).matches;
+}
 
 const quickTags = [
   { label: "Poster", terms: ["poster", "flyer", "poster design"] },
@@ -575,12 +580,23 @@ export function CatalogSection() {
   }, [prompts, query, activeFilter, activeTag, sort, applyFilter]);
 
   useEffect(() => {
+    const desktopQuery = window.matchMedia(DESKTOP_BREAKPOINT_QUERY);
+    const closeSheetOnDesktop = () => {
+      if (desktopQuery.matches) setMobileSheetOpen(false);
+    };
+
+    closeSheetOnDesktop();
+    desktopQuery.addEventListener("change", closeSheetOnDesktop);
+    return () => desktopQuery.removeEventListener("change", closeSheetOnDesktop);
+  }, []);
+
+  useEffect(() => {
     const handleRandom = () => {
       const pool = filtered.filter((p) => !unavailableIds.has(p.id));
       const randomPrompt = pool[Math.floor(Math.random() * pool.length)];
       if (randomPrompt) {
         setSelected(randomPrompt);
-        setMobileSheetOpen(true);
+        setMobileSheetOpen(shouldOpenMobileSheet());
       }
     };
 
@@ -729,7 +745,7 @@ export function CatalogSection() {
                       isSelected={selected?.id === p.id}
                       onClick={() => {
                         setSelected(p);
-                        setMobileSheetOpen(true);
+                        setMobileSheetOpen(shouldOpenMobileSheet());
                       }}
                       onUnavailable={() => {
                         setUnavailableIds((prev) => new Set(prev).add(p.id));
