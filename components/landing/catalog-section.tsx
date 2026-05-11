@@ -199,16 +199,40 @@ function recommendedSort(filter: string, tag: (typeof quickTags)[0] | null, quer
   };
 }
 
-function PromptThumbnail({ prompt, onUnavailable }: { prompt: Prompt; onUnavailable: () => void }) {
+function PromptThumbnail({
+  prompt,
+  onUnavailable,
+  onPreview,
+}: {
+  prompt: Prompt;
+  onUnavailable: () => void;
+  onPreview?: (image: string) => void;
+}) {
   const [extIndex, setExtIndex] = useState(0);
   const [r2Failed, setR2Failed] = useState(false);
   const [sourceFailed, setSourceFailed] = useState(false);
   const r2 = r2ImageUrl(prompt.id, R2_IMAGE_EXTS[extIndex]);
   const sourceImage = prompt.media?.[0] || prompt.media_thumbnails?.[0] || "";
 
-  const overlay = (
+  const renderOverlay = (image: string) => (
     <span className="absolute inset-0 flex items-center justify-center bg-background/0 opacity-0 transition-all duration-200 group-hover/thumbnail:bg-background/20 group-hover/thumbnail:opacity-100">
-      <span className="inline-flex size-10 items-center justify-center rounded-full bg-background/90 text-foreground shadow-sm">
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Open large preview"
+        className="inline-flex size-11 items-center justify-center rounded-full bg-background/95 text-foreground shadow-sm ring-1 ring-foreground/10 transition-transform hover:scale-105"
+        onClick={(event) => {
+          event.stopPropagation();
+          onPreview?.(image);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            onPreview?.(image);
+          }
+        }}
+      >
         <Eye className="size-4" />
       </span>
     </span>
@@ -234,7 +258,7 @@ function PromptThumbnail({ prompt, onUnavailable }: { prompt: Prompt; onUnavaila
         <span className="absolute bottom-2 right-2 bg-background/80 px-1.5 py-0.5 font-mono text-[10px]">
           R2
         </span>
-        {overlay}
+        {renderOverlay(r2)}
       </div>
     );
   }
@@ -256,7 +280,7 @@ function PromptThumbnail({ prompt, onUnavailable }: { prompt: Prompt; onUnavaila
         <span className="absolute bottom-2 right-2 bg-background/80 px-1.5 py-0.5 font-mono text-[10px]">
           Source
         </span>
-        {overlay}
+        {renderOverlay(sourceImage)}
       </div>
     );
   }
@@ -276,11 +300,13 @@ function PromptCard({
   isSelected,
   onClick,
   onUnavailable,
+  onPreview,
 }: {
   prompt: Prompt;
   isSelected: boolean;
   onClick: () => void;
   onUnavailable: () => void;
+  onPreview: (image: string) => void;
 }) {
   return (
     <button
@@ -290,7 +316,7 @@ function PromptCard({
         isSelected ? "border-foreground bg-foreground/5" : "border-foreground/10 bg-background"
       }`}
     >
-      <PromptThumbnail prompt={prompt} onUnavailable={onUnavailable} />
+      <PromptThumbnail prompt={prompt} onUnavailable={onUnavailable} onPreview={onPreview} />
       <div className="p-4">
         <h3 className="mb-1 line-clamp-2 text-sm font-medium">{prompt.title}</h3>
         <p className="line-clamp-2 text-xs text-muted-foreground">{prompt.description}</p>
@@ -316,6 +342,90 @@ function PromptCard({
         </div>
       </div>
     </button>
+  );
+}
+
+function PromptPreviewOverlay({
+  prompt,
+  image,
+  onClose,
+}: {
+  prompt: Prompt;
+  image: string;
+  onClose: () => void;
+}) {
+  const formattedPrompt = formatPromptContent(prompt.prompt || prompt.original_prompt || "");
+
+  const copyPrompt = async () => {
+    await navigator.clipboard.writeText(formattedPrompt);
+    toast.success("Source prompt copied");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] bg-background/95 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-4 z-[90] inline-flex size-10 items-center justify-center rounded-full border border-foreground/15 bg-background/90 text-foreground hover:bg-foreground hover:text-background"
+        aria-label="Close large preview"
+      >
+        <X className="size-4" />
+      </button>
+      <div
+        className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-md border border-foreground/10 bg-background shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-foreground/10 px-5 py-4">
+          <div className="min-w-0">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              Large preview
+            </span>
+            <h3 className="mt-1 line-clamp-2 text-base font-medium">{prompt.title}</h3>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 shrink-0 rounded-full border-foreground/20 text-xs"
+            onClick={copyPrompt}
+          >
+            <Copy className="h-3 w-3" />
+            Copy prompt
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <div className="flex min-h-full flex-col">
+            <div className="flex min-h-[50vh] flex-1 items-center justify-center bg-white p-4 sm:p-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={image}
+                alt={`${prompt.title} large preview`}
+                className="max-h-[70vh] w-full object-contain"
+              />
+            </div>
+
+            <div className="border-t border-foreground/10 bg-background p-5 sm:p-6">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Source prompt
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  {formattedPrompt.split("\n").length.toLocaleString("en-US")} lines
+                </span>
+              </div>
+              <pre className="max-h-[34vh] overflow-auto whitespace-pre-wrap break-words rounded-md border border-foreground/10 bg-foreground/[0.025] p-4 font-mono text-xs leading-6 text-foreground/75 tabular-nums">
+                {renderPromptContent(formattedPrompt)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -568,6 +678,7 @@ export function CatalogSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [preview, setPreview] = useState<{ prompt: Prompt; image: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const applyFilter = useCallback(
@@ -793,6 +904,11 @@ export function CatalogSection() {
                         setUnavailableIds((prev) => new Set(prev).add(p.id));
                         if (selected?.id === p.id) setSelected(null);
                       }}
+                      onPreview={(image) => {
+                        setSelected(p);
+                        setMobileSheetOpen(false);
+                        setPreview({ prompt: p, image });
+                      }}
                     />
                   ))}
                 </div>
@@ -834,6 +950,13 @@ export function CatalogSection() {
               {selected && <DetailView prompt={selected} onClose={() => setMobileSheetOpen(false)} />}
             </SheetContent>
           </Sheet>
+          {preview && (
+            <PromptPreviewOverlay
+              prompt={preview.prompt}
+              image={preview.image}
+              onClose={() => setPreview(null)}
+            />
+          )}
         </div>
       </div>
     </section>
