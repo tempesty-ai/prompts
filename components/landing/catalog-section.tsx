@@ -487,7 +487,7 @@ function DetailView({ prompt, onClose }: { prompt: Prompt; onClose: () => void }
 
       {activeImage && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] bg-background/95 p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           onClick={() => setActiveImage(null)}
@@ -495,18 +495,60 @@ function DetailView({ prompt, onClose }: { prompt: Prompt; onClose: () => void }
           <button
             type="button"
             onClick={() => setActiveImage(null)}
-            className="absolute right-4 top-4 inline-flex size-10 items-center justify-center rounded-full border border-foreground/15 bg-background/90 text-foreground hover:bg-foreground hover:text-background"
+            className="absolute right-4 top-4 z-[90] inline-flex size-10 items-center justify-center rounded-full border border-foreground/15 bg-background/90 text-foreground hover:bg-foreground hover:text-background"
             aria-label="소스 이미지 미리보기 닫기"
           >
             <X className="size-4" />
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={activeImage}
-            alt={`${prompt.title} 확대된 소스 이미지`}
-            className="max-h-[88vh] max-w-[92vw] object-contain shadow-2xl"
+          <div
+            className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-md border border-foreground/10 bg-background shadow-2xl"
             onClick={(event) => event.stopPropagation()}
-          />
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-foreground/10 px-5 py-4">
+              <div className="min-w-0">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Preview
+                </span>
+                <h3 className="mt-1 line-clamp-2 text-base font-medium">{prompt.title}</h3>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 shrink-0 rounded-full border-foreground/20 text-xs"
+                onClick={copyPrompt}
+              >
+                <Copy className="h-3 w-3" />
+                Copy prompt
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-auto">
+              <div className="flex min-h-full flex-col">
+                <div className="flex min-h-[45vh] flex-1 items-center justify-center bg-white p-4 sm:p-6">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeImage}
+                    alt={`${prompt.title} preview image`}
+                    className="max-h-[68vh] w-full object-contain"
+                  />
+                </div>
+
+                <div className="border-t border-foreground/10 bg-background p-5 sm:p-6">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                    <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Source prompt
+                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      {formattedPrompt.split("\n").length.toLocaleString("en-US")} lines
+                    </span>
+                  </div>
+                  <pre className="max-h-[34vh] overflow-auto whitespace-pre-wrap break-words rounded-md border border-foreground/10 bg-foreground/[0.025] p-4 font-mono text-xs leading-6 text-foreground/75 tabular-nums">
+                    {renderPromptContent(formattedPrompt)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
